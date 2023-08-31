@@ -1,0 +1,64 @@
+version: '3.9'
+
+services:
+  backend:
+    container_name: backend
+    image: ${DOCKER_REGISTRY-}webshopproject
+    build:
+      context: .
+      dockerfile: WebShopProject/Dockerfile
+    depends_on:
+      - "postgres_db"
+    networks: 
+      - backend
+    
+  client:
+    image: client
+    container_name: client
+    build:
+      context: ./web-client
+      dockerfile: Dockerfile
+    depends_on:
+      - "backend"
+    volumes:
+      - ./web-client/src:/app/src
+      - ./web-client/public:/app/public
+      - ./web-client/styles:/app/styles
+      - ./web-client/tailwind.config.ts:/app/tailwind.config.ts
+
+      - /app/node_modules
+      - /app/.next
+    restart: always
+    command: npm run dev
+    networks: 
+      - client  
+
+  proxy:
+    image: nginx:mainline
+    container_name: proxy
+    volumes:
+      - ./proxy/nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - "backend"
+      - "client"
+    networks: 
+      - backend
+      - client  
+
+  postgres_db:
+    container_name: postgres
+    image: postgres:15.3-alpine3.18
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    restart: always
+    networks: 
+      - backend
+
+volumes:
+  postgres-data:
+    
+networks:
+  client:
+    driver: bridge
+  backend:
+    driver: bridge
